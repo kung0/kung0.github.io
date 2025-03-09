@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css"> <!-- Optional for styling -->
     <style>
         body {
+            /* background-color: black; */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -17,17 +18,20 @@
             max-width: 100%; /* Responsive logo */
             height: auto; /* Maintain aspect ratio */
         }
+        .btn-custom {
+            margin: 10px; /* Add some space between buttons */
+        }
     </style>
 </head>
 <body>
     <div class="container">
         <img src="downtown_logo.png" alt="Your Restaurant Logo" class="logo"> <!-- Replace logo.png with your logo file name -->
         <p>Check out our menus:</p>
-        <ul class="list-unstyled">
-            <li><a href="food-menu.pdf" target="_blank">Food Menu</a></li>
-            <li><a href="cafe-menu.pdf" target="_blank">Cafe Menu</a></li>
-            <li><a href="drinks-menu.pdf" target="_blank">Drinks Menu</a></li>
-        </ul>
+        <div>
+            <a href="Moc_menu.pdf" target="_blank" class="btn btn-secondary btn-custom">Food Menu</a>
+            <a href="cafe-menu.pdf" target="_blank" class="btn btn-secondary btn-custom">Cafe Menu</a>
+            <a href="drinks-menu.pdf" target="_blank" class="btn btn-secondary btn-custom">Drinks Menu</a>
+        </div>
     </div>
 </body>
 </html>
