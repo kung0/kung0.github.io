@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>downtowndarmstadt - Events</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <!-- Papa Parse for CSV parsing -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            background-image: url('background2.jpg');
+            background-attachment: fixed;
+            background-size: cover;
+            background-color: black;
+            color: white;
+            padding-top: 70px; /* Space for fixed navbar */
+            min-height: 100vh; /* Ensure body takes full viewport height */
+            text-align: center;
+            font-family: 'Helvetica Neue', Arial, sans-serif; /* Modern font stack */
+        }
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent black */
+        }
+        .navbar-brand, .nav-link {
+            color: white !important;
+            font-weight: 500;
+        }
+        .nav-link:hover {
+            color: #ccc !important;
+        }
+        .container {
+            padding: 40px 20px;
+        }
+        h2 {
+            color: white;
+            font-weight: 700;
+            margin-bottom: 30px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        .event-table-container {
+            background-color: rgba(0, 0, 0, 0.85); /* Dark semi-transparent background */
+            border-radius: 15px;
+            padding: 20px;
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3); /* Subtle shadow for depth */
+            max-width: 900px; /* Limit table width for readability */
+            margin: 0 auto; /* Center the container */
+        }
+        .table {
+            margin-bottom: 0; /* Remove default margin */
+            color: white; /* White text for table */
+            border-collapse: separate; /* Allow rounded corners */
+            border-spacing: 0;
+        }
+        .table th, .table td {
+            border: none; /* Remove default borders */
+            padding: 15px; /* Spacious padding */
+            vertical-align: middle; /* Center content vertically */
+        }
+        .table th {
+            background-color: #1a1a1a; /* Darker header background */
+            text-transform: uppercase;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+            font-weight: 600;
+        }
+        .table tbody tr {
+            background-color: rgba(255, 255, 255, 0.05); /* Very subtle white tint */
+            transition: background-color 0.3s ease; /* Smooth hover transition */
+        }
+        .table tbody tr:hover {
+            background-color: rgba(255, 255, 255, 0.15); /* Lighten on hover */
+        }
+        .table tbody td {
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1); /* Subtle row separator */
+        }
+        .table tbody tr:last-child td {
+            border-bottom: none; /* No border on last row */
+        }
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .table th, .table td {
+                padding: 10px; /* Reduce padding on smaller screens */
+                font-size: 0.85rem; /* Slightly smaller text */
+            }
+            .event-table-container {
+                padding: 15px;
+            }
+        }
+        /* Loading and error messages */
+        .loading-message, .error-message {
+            color: white;
+            font-weight: 500;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation Bar -->
+    <nav class="navbar navbar-expand-lg fixed-top">
+        <a class="navbar-brand" href="index.html">downtowndarmstadt</a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav ml-auto">
+                <li class="nav-item">
+                    <a class="nav-link" href="about.html">About Us</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="index.html">Menu</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" href="events.html">Events</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- Events Content -->
+    <div class="container">
+        <h2>Upcoming Events</h2>
+        <div class="event-table-container">
+            <table class="table">
+                <thead>
+                    <tr>
+                        <th>Event Name</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody id="events-table-body">
+                    <tr>
+                        <td colspan="4" class="loading-message">Loading events...</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS and dependencies -->
+    <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+    <!-- Script to fetch and display events from Google Sheets -->
+    <script>
+        Papa.parse('https://docs.google.com/spreadsheets/d/e/https://docs.google.com/spreadsheets/d/e/2PACX-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv', {
+            download: true,
+            header: true,
+            complete: function(results) {
+                const tableBody = document.getElementById('events-table-body');
+                tableBody.innerHTML = ''; // Clear loading message
+                if (results.data && results.data.length > 0) {
+                    results.data.forEach(event => {
+                        // Ensure all required fields are present
+                        if (event.Name && event.Date && event.Time && event.Description) {
+                            const row = document.createElement('tr');
+                            row.innerHTML = `
+                                <td>${event.Name}</td>
+                                <td>${event.Date}</td>
+                                <td>${event.Time}</td>
+                                <td>${event.Description}</td>
+                            `;
+                            tableBody.appendChild(row);
+                        }
+                    });
+                    // If no valid events, show a message
+                    if (tableBody.children.length === 0) {
+                        tableBody.innerHTML = '<tr><td colspan="4" class="error-message">No events available.</td></tr>';
+                    }
+                } else {
+                    tableBody.innerHTML = '<tr><td colspan="4" class="error-message">No events available.</td></tr>';
+                }
+            },
+            error: function(error) {
+                console.error('Error loading events:', error);
+                const tableBody = document.getElementById('events-table-body');
+                tableBody.innerHTML = '<tr><td colspan="4" class="error-message">Failed to load events. Please try again later.</td></tr>';
+            }
+        });
+    </script>
+</body>
+</html>
