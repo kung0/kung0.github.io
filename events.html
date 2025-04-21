@@ -168,29 +168,55 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <!-- Script to fetch and display events from Google Sheets -->
     <script>
+        // Get today's date (midnight for consistent comparison)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0); // Set to start of the day
+    
         Papa.parse('https://docs.google.com/spreadsheets/d/e/2PACX-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv', {
             download: true,
             header: true,
             complete: function(results) {
                 const tableBody = document.getElementById('events-table-body');
                 tableBody.innerHTML = ''; // Clear loading message
+                let hasValidEvents = false;
+    
                 if (results.data && results.data.length > 0) {
                     results.data.forEach(event => {
                         // Ensure all required fields are present
                         if (event.Name && event.Date && event.Time && event.Description) {
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${event.Name}</td>
-                                <td>${event.Date}</td>
-                                <td>${event.Time}</td>
-                                <td>${event.Description}</td>
-                            `;
-                            tableBody.appendChild(row);
+                            // Parse the event date (assuming format like MM/DD/YYYY or YYYY-MM-DD)
+                            const eventDateParts = event.Date.split(/[-\/]/); // Split on '/' or '-'
+                            let eventDate;
+                            if (eventDateParts.length === 3) {
+                                // Assume MM/DD/YYYY or YYYY-MM-DD
+                                const [part1, part2, part3] = eventDateParts;
+                                if (part1.length === 4) {
+                                    // YYYY-MM-DD
+                                    eventDate = new Date(part1, part2 - 1, part3);
+                                } else {
+                                    // MM/DD/YYYY
+                                    eventDate = new Date(part3, part1 - 1, part2);
+                                }
+                            }
+    
+                            // Check if the event date is valid and is today or in the future
+                            if (eventDate && !isNaN(eventDate.getTime()) && eventDate >= today) {
+                                const row = document.createElement('tr');
+                                row.innerHTML = `
+                                    <td>${event.Name}</td>
+                                    <td>${event.Date}</td>
+                                    <td>${event.Time}</td>
+                                    <td>${event.Description}</td>
+                                `;
+                                tableBody.appendChild(row);
+                                hasValidEvents = true;
+                            }
                         }
                     });
+    
                     // If no valid events, show a message
-                    if (tableBody.children.length === 0) {
-                        tableBody.innerHTML = '<tr><td colspan="4" class="error-message">No events available.</td></tr>';
+                    if (!hasValidEvents) {
+                        tableBody.innerHTML = '<tr><td colspan="4" class="error-message">No upcoming events available.</td></tr>';
                     }
                 } else {
                     tableBody.innerHTML = '<tr><td colspan="4" class="error-message">No events available.</td></tr>';
