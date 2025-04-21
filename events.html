@@ -172,6 +172,11 @@
         const today = new Date();
         today.setHours(0, 0, 0, 0); // Set to start of the day
     
+        // Function to get weekday name from a Date object
+        const getWeekday = (date) => {
+            return date.toLocaleDateString('en-US', { weekday: 'long' });
+        };
+    
         Papa.parse('https://docs.google.com/spreadsheets/d/e/2PACX-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv', {
             download: true,
             header: true,
@@ -201,10 +206,14 @@
     
                             // Check if the event date is valid and is today or in the future
                             if (eventDate && !isNaN(eventDate.getTime()) && eventDate >= today) {
+                                // Get the weekday for the event date
+                                const weekday = getWeekday(eventDate);
+                                const formattedDate = `${event.Date} (${weekday})`;
+    
                                 const row = document.createElement('tr');
                                 row.innerHTML = `
                                     <td>${event.Name}</td>
-                                    <td>${event.Date}</td>
+                                    <td>${formattedDate}</td>
                                     <td>${event.Time}</td>
                                     <td>${event.Description}</td>
                                 `;
