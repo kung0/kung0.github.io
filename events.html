@@ -166,34 +166,60 @@
         document.addEventListener('DOMContentLoaded', function () {
             const eventsTableBody = document.getElementById('events-table-body');
     
-            // Google Sheets CSV URL
             const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv';
+    
+            // Parse "DD.MM.YYYY" into a JS Date object
+            function parseEuropeanDate(dateStr) {
+                const [day, month, year] = dateStr.split('.');
+                return new Date(`${year}-${month}-${day}`); // Safe format for JS Date
+            }
     
             Papa.parse(csvUrl, {
                 download: true,
                 header: true,
+                skipEmptyLines: true,
                 complete: function(results) {
                     const data = results.data;
+
+                    console.log("Parsed data:", data);
     
-                    // Clear loading message    
                     eventsTableBody.innerHTML = '';
     
-                    if (data.length === 0 || (data.length === 1 && Object.values(data[0]).every(v => v.trim() === ''))) {
-                        eventsTableBody.innerHTML = '<tr><td colspan="4" class="error-message">No events found.</td></tr>';
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0); // normalize time
+    
+                    const futureEvents = data
+                        .filter(event => {
+                            const dateStr = event['Date'];
+                            const eventDate = parseEuropeanDate(dateStr);
+    
+                            return (
+                                event['Event Name'] &&
+                                event['Time'] &&
+                                event['Description'] &&
+                                !isNaN(eventDate) &&
+                                eventDate >= today
+                            );
+                        })
+                        .sort((a, b) => {
+                            const dateA = parseEuropeanDate(a['Date']);
+                            const dateB = parseEuropeanDate(b['Date']);
+                            return dateA - dateB;
+                        });
+    
+                    if (futureEvents.length === 0) {
+                        eventsTableBody.innerHTML = '<tr><td colspan="4" class="error-message">No upcoming events.</td></tr>';
                         return;
                     }
     
-                    data.forEach(event => {
-                        // Skip empty rows
-                        if (!event['Event Name'] || !event['Date'] || !event['Time'] || !event['Description']) return;
-    
+                    futureEvents.forEach(event => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
                             <td>${event['Event Name']}</td>
                             <td>${event['Date']}</td>
                             <td>${event['Time']}</td>
                             <td>${event['Description']}</td>
-                        `;
+                        `; 
                         eventsTableBody.appendChild(row);
                     });
                 },
@@ -204,6 +230,7 @@
             });
         });
     </script>
+    
      
 </body>
 </html>
