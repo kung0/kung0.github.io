@@ -163,94 +163,47 @@
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
     <!-- Script to fetch and display events from Google Sheets -->
     <script>
-        // Function to parse date string (handles MM/DD/YYYY and YYYY-MM-DD)
-        function parseEventDate(dateStr) {
-            const parts = dateStr.split(/[-\/]/);
-            if (parts.length !== 3) return null;
-            let year, month, day;
-            if (parts[0].length === 4) {
-                // YYYY-MM-DD
-                [year, month, day] = parts;
-            } else {
-                // MM/DD/YYYY
-                [month, day, year] = parts;
-            }
-            const date = new Date(year, month - 1, day);
-            return isNaN(date.getTime()) ? null : date;
-        }
-
-        // Function to get weekday name
-        function getWeekday(date) {
-            return date.toLocaleDateString('en-US', { weekday: 'long' });
-        }
-
-        // Get today's date for filtering
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        // Google Sheet CSV URL
-        const sheetUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv';
-        // CORS proxy URL
-        const corsProxy = 'https://cors-anywhere.herokuapp.com/';
-        const proxiedUrl = corsProxy + sheetUrl;
-
-        // Fetch and parse CSV
-        Papa.parse(proxiedUrl, {
-            download: true,
-            header: true,
-            complete: function(results) {
-                const tableBody = document.getElementById('events-table-body');
-                tableBody.innerHTML = ''; // Clear loading message
-                let hasEvents = false;
-
-                if (results.data && Array.isArray(results.data)) {
-                    // Filter and sort events
-                    const upcomingEvents = results.data
-                        .filter(event => {
-                            if (!event.Name || !event.Date || !event.Time || !event.Description) {
-                                return false; // Skip incomplete events
-                            }
-                            const eventDate = parseEventDate(event.Date);
-                            return eventDate && eventDate >= today;
-                        })
-                        .sort((a, b) => {
-                            const dateA = parseEventDate(a.Date);
-                            const dateB = parseEventDate(b.Date);
-                            return dateA - dateB; // Sort by date ascending
-                        });
-
-                    // Populate table
-                    upcomingEvents.forEach(event => {
-                        const eventDate = parseEventDate(event.Date);
-                        if (eventDate) {
-                            const weekday = getWeekday(eventDate);
-                            const formattedDate = `${event.Date} (${weekday})`;
-                            const row = document.createElement('tr');
-                            row.innerHTML = `
-                                <td>${event.Name}</td>
-                                <td>${formattedDate}</td>
-                                <td>${event.Time}</td>
-                                <td>${event.Description}</td>
-                            `;
-                            tableBody.appendChild(row);
-                            hasEvents = true;
-                        }
-                    });
-
-                    // Show message if no valid events
-                    if (!hasEvents) {
-                        tableBody.innerHTML = '<tr><td colspan="4" class="error-message">No upcoming events available.</td></tr>';
+        document.addEventListener('DOMContentLoaded', function () {
+            const eventsTableBody = document.getElementById('events-table-body');
+    
+            // Google Sheets CSV URL
+            const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv';
+    
+            Papa.parse(csvUrl, {
+                download: true,
+                header: true,
+                complete: function(results) {
+                    const data = results.data;
+    
+                    // Clear loading message    
+                    eventsTableBody.innerHTML = '';
+    
+                    if (data.length === 0 || (data.length === 1 && Object.values(data[0]).every(v => v.trim() === ''))) {
+                        eventsTableBody.innerHTML = '<tr><td colspan="4" class="error-message">No events found.</td></tr>';
+                        return;
                     }
-                } else {
-                    tableBody.innerHTML = '<tr><td colspan="4" class="error-message">No events data found.</td></tr>';
+    
+                    data.forEach(event => {
+                        // Skip empty rows
+                        if (!event['Event Name'] || !event['Date'] || !event['Time'] || !event['Description']) return;
+    
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${event['Event Name']}</td>
+                            <td>${event['Date']}</td>
+                            <td>${event['Time']}</td>
+                            <td>${event['Description']}</td>
+                        `;
+                        eventsTableBody.appendChild(row);
+                    });
+                },
+                error: function(err) {
+                    eventsTableBody.innerHTML = '<tr><td colspan="4" class="error-message">Failed to load events.</td></tr>';
+                    console.error("PapaParse Error:", err);
                 }
-            },
-            error: function(error) {
-                console.error('Error fetching events:', error);
-                const tableBody = document.getElementById('events-table-body');
-                tableBody.innerHTML = '<tr><td colspan="4" class="error-message">Failed to load events. Please try again later.</td></tr>';
-            }
+            });
         });
     </script>
+     
 </body>
 </html>
