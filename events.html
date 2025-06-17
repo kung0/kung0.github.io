@@ -192,26 +192,35 @@
                         .filter(event => {
                             const dateStr = event['Date'];
                             const eventDate = parseEuropeanDate(dateStr);
-    
-                            return (
-                                event['Event Name'] &&
-                                event['Time'] &&
-                                event['Description'] &&
-                                !isNaN(eventDate) &&
-                                eventDate >= today
-                            );
+                            return eventDate >= today;
                         })
                         .sort((a, b) => {
                             const dateA = parseEuropeanDate(a['Date']);
                             const dateB = parseEuropeanDate(b['Date']);
                             return dateA - dateB;
                         });
+
+                    const tbaEvents = data
+                        .filter(event => event['Date']=='')
+
+                    console.log(tbaEvents)
     
                     if (futureEvents.length === 0) {
                         eventsTableBody.innerHTML = '<tr><td colspan="4" class="error-message">No upcoming events.</td></tr>';
                         return;
                     }
     
+                    tbaEvents.forEach(event => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${event['Event Name']}</td>
+                            <td>TBA</td>
+                            <td>${event['Time']}</td>
+                            <td>${event['Description']}</td>
+                        `; 
+                        eventsTableBody.appendChild(row);
+                    });
+
                     futureEvents.forEach(event => {
                         const row = document.createElement('tr');
                         row.innerHTML = `
