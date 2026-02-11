@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Billiard & Dart Tracker</title>
+
+<style>
+    body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f0f0; }
+    header { background:#333; color:#fff; padding:1rem; text-align:center; }
+    main { display:flex; flex-wrap: wrap; padding:1rem; gap:1rem; justify-content:center; }
+    .table-card { background:#fff; border-radius:10px; padding:1rem; width:300px; box-shadow:0 2px 8px rgba(0,0,0,0.2); }
+    .table-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem; }
+    .status { font-weight:bold; padding:0.2rem 0.5rem; border-radius:5px; color:#fff; }
+    .status.free { background:grey; }
+    .status.occupied { background:green; }
+    input, button { padding:0.3rem; margin:0.2rem 0; width:100%; box-sizing:border-box; }
+    h2 { margin:0.5rem 0; font-size:1.2rem; }
+    .history { max-height:150px; overflow:auto; margin-top:0.5rem; border-top:1px solid #ccc; padding-top:0.5rem; }
+    .waiting-list { background:#fff; border-radius:10px; padding:1rem; width:300px; box-shadow:0 2px 8px rgba(0,0,0,0.2); margin-top:1rem; }
+    .waiting-item { display:flex; justify-content:space-between; align-items:center; padding:0.3rem 0; border-bottom:1px solid #eee; }
+    .waiting-controls button { margin-left:0.2rem; }
+    @media(max-width:768px){ main { flex-direction:column; align-items:center; } }
+    
+    /* NEW LAYOUT */
+  .layout {
+      display: grid;
+      grid-template-columns: 3fr 1fr; /* tables big, waiting list smaller */
+      gap: 1rem;
+      padding: 1rem;
+  }
+
+  /* Tables area */
+  main {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      justify-content: flex-start;
+  }
+
+  /* Keep waiting list on right */
+  .waiting-list {
+      background:#fff;
+      border-radius:10px;
+      padding:1rem;
+      box-shadow:0 2px 8px rgba(0,0,0,0.2);
+      height: calc(100vh - 120px); /* fills screen nicely */
+      overflow-y: auto;
+  }
+
+  /* Responsive: stack on smaller screens */
+  @media(max-width: 900px){
+      .layout {
+          grid-template-columns: 1fr;
+      }
+      .waiting-list {
+          height: auto;
+      }
+  }
+
+  .waiting-item.next-up {
+    background: #e6ffe6;
+    border-left: 6px solid #2ecc71;
+    padding-left: 5px;
+}
+
+
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>🎱 Billiard & Dart Tracker</h1>
+<div>
+<button onclick="undo()">⏪ Undo</button>
+<button onclick="redo()">⏩ Redo</button>
+</div>
+</header>
+
+<div class="layout">
+<main id="dashboard"></main>
+
+<div class="waiting-list">
+<h3>🎱 Billiard Waiting</h3>
+<input id="waitNameBilliard" placeholder="Name">
+<input id="waitPagerBilliard" placeholder="Pager">
+<button onclick="addWaiting('billiard')">Add</button>
+<div id="waitingListBilliard"></div>
+
+<hr>
+
+<h3>🎯 Dart Waiting</h3>
+<input id="waitNameDart" placeholder="Name">
+<input id="waitPagerDart" placeholder="Pager">
+<button onclick="addWaiting('dart')">Add</button>
+<div id="waitingListDart"></div>
+</div>
+</div>
+
+<script>
+/* =======================
+   CONFIG
+======================= */
+const tablesConfig = [
+ {id:1,type:'billiard'},{id:2,type:'billiard'},{id:3,type:'billiard'},
+ {id:4,type:'billiard'},{id:5,type:'billiard'},{id:6,type:'dart'}
+];
+
+const pricing = { billiard:12, dart:8 };
+const API_URL = "./state.json";
+
+/* =======================
+   STATE
+======================= */
+let tables = [];
+let waitingList = {billiard:[], dart:[]};
+
+/* =======================
+   SERVER STORAGE
+======================= */
+async function saveState(){
+ await fetch("save.php",{
+  method:"POST",
+  headers:{'Content-Type':'application/json'},
+  body:JSON.stringify({tables,waitingList})
+ });
+}
+
+async function loadState(){
+ try{
+  const r = await fetch(API_URL);
+  const d = await r.json();
+  tables = d.tables.length ? d.tables : tablesConfig.map(t=>({...t,customer:'',timer:0,running:false,startTime:null,history:[]}));
+  waitingList = d.waitingList || {billiard:[], dart:[]};
+ }catch{
+  tables = tablesConfig.map(t=>({...t,customer:'',timer:0,running:false,startTime:null,history:[]}));
+  waitingList = {billiard:[], dart:[]};
+ }
+}
+
+/* =======================
+   UNDO / REDO
+======================= */
+let undoStack=[], redoStack=[];
+
+function snapshot(){
+ undoStack.push(JSON.stringify({tables,waitingList}));
+ if(undoStack.length>100) undoStack.shift();
+ redoStack=[];
+}
+
+function undo(){
+ if(!undoStack.length) return;
+ redoStack.push(JSON.stringify({tables,waitingList}));
+ const prev = JSON.parse(undoStack.pop());
+ tables = prev.tables; waitingList = prev.waitingList;
+ renderDashboard(); renderWaitingList(); saveState();
+}
+
+function redo(){
+ if(!redoStack.length) return;
+ undoStack.push(JSON.stringify({tables,waitingList}));
+ const next = JSON.parse(redoStack.pop());
+ tables = next.tables; waitingList = next.waitingList;
+ renderDashboard(); renderWaitingList(); saveState();
+}
+
+window.addEventListener("keydown",e=>{
+ if(e.ctrlKey && e.key==="z"){e.preventDefault();undo();}
+ if(e.ctrlKey && (e.key==="y" || (e.shiftKey && e.key==="Z"))){e.preventDefault();redo();}
+});
+
+/* =======================
+   HELPERS
+======================= */
+function formatTime(d){ return new Date(d).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
+
+function calculatePrice(t){
+ if(!t.startTime) return 0;
+ let dur = (new Date()-new Date(t.startTime))/3600000;
+ return (dur*(t.type==='dart'?pricing.dart:pricing.billiard)).toFixed(2);
+}
+
+/* =======================
+   RENDER
+======================= */
+function renderDashboard(){
+ const dash=document.getElementById("dashboard");
+ dash.innerHTML="";
+ tables.forEach(t=>{
+  const d=document.createElement("div");
+  d.className="table-card";
+  d.innerHTML=`
+  <b>${t.type==='dart'?'🎯 Dart':'🎱 Billiard'} #${t.id}</b>
+  <div class="status ${t.running?'occupied':'free'}">${t.running?'Occupied':'Free'}</div>
+  <input value="${t.customer}" placeholder="Customer" onchange="setCustomer(${t.id},this.value)">
+  <div>Start: ${t.startTime?formatTime(t.startTime):'-'}</div>
+  <div>Price: €${calculatePrice(t)}</div>
+  <button onclick="startStop(${t.id})">${t.running?'Stop':'Start'}</button>
+  <div class="history">${t.history.map(h=>`<div>${h.customer} €${h.price}</div>`).join('')}</div>
+  `;
+  dash.appendChild(d);
+ });
+}
+
+function renderWaitingList(){
+ renderList('billiard','waitingListBilliard','🎱');
+ renderList('dart','waitingListDart','🎯');
+}
+
+function renderList(type,id,icon){
+ const c=document.getElementById(id); c.innerHTML="";
+ waitingList[type].forEach((w,i)=>{
+  const d=document.createElement("div");
+  d.className="waiting-item";
+  d.innerHTML=`
+  <span>${icon} ${w.name} (${w.pager})</span>
+  <span>
+   <button onclick="assignToFreeTable('${type}',${i})">✅</button>
+   <button onclick="removeWaiting('${type}',${i})">❌</button>
+  </span>`;
+  c.appendChild(d);
+ });
+}
+
+/* =======================
+   ACTIONS
+======================= */
+function setCustomer(id,name){
+ snapshot();
+ tables.find(t=>t.id===id).customer=name;
+ saveState();
+}
+
+function startStop(id){
+ snapshot();
+ const t=tables.find(x=>x.id===id);
+ if(t.running){
+  t.running=false;
+  t.timer=new Date()-new Date(t.startTime);
+  t.history.unshift({customer:t.customer,price:calculatePrice(t)});
+  t.customer=''; t.startTime=null;
+ }else{
+  t.running=true;
+  t.startTime=new Date();
+ }
+ saveState(); renderDashboard(); renderWaitingList();
+}
+
+function addWaiting(type){
+ snapshot();
+ const name=document.getElementById(type==='billiard'?'waitNameBilliard':'waitNameDart').value;
+ const pager=document.getElementById(type==='billiard'?'waitPagerBilliard':'waitPagerDart').value;
+ if(!name) return;
+ waitingList[type].push({name,pager,arrival:new Date()});
+ saveState(); renderWaitingList();
+}
+
+function removeWaiting(type,i){
+ snapshot();
+ waitingList[type].splice(i,1);
+ saveState(); renderWaitingList();
+}
+
+function assignToFreeTable(type,i){
+ snapshot();
+ const w=waitingList[type][i];
+ const free=tables.find(t=>t.type===type && !t.running);
+ if(!free) return alert("No free table");
+ free.customer=w.name;
+ free.running=true;
+ free.startTime=new Date();
+ waitingList[type].splice(i,1);
+ saveState(); renderDashboard(); renderWaitingList();
+}
+
+/* =======================
+   INIT
+======================= */
+(async()=>{
+ await loadState();
+ renderDashboard();
+ renderWaitingList();
+})();
+</script>
+</body>
+</html>
