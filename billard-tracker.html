@@ -191,12 +191,61 @@ function calculatePrice(table) {
 }
 
 function clearHistory(id) {
+    pushUndoState();
     if(!confirm('Are you sure you want to clear the history for this table?')) return;
     const table = tables.find(t => t.id === id);
     table.history = [];
     saveState();
     renderDashboard();
 }
+
+// --- Undo / Redo System ---
+let undoStack = [];
+let redoStack = [];
+
+function pushUndoState() {
+    undoStack.push({
+        tables: JSON.parse(JSON.stringify(tables)),
+        waitingList: JSON.parse(JSON.stringify(waitingList))
+    });
+    redoStack = []; // clear redo on new action
+    if (undoStack.length > 50) undoStack.shift();
+}
+
+function undo() {
+    if (!undoStack.length) return;
+
+    redoStack.push({
+        tables: JSON.parse(JSON.stringify(tables)),
+        waitingList: JSON.parse(JSON.stringify(waitingList))
+    });
+
+    const prev = undoStack.pop();
+    tables = prev.tables;
+    waitingList = prev.waitingList;
+
+    saveState();
+    renderDashboard();
+    renderWaitingList();
+}
+
+function redo() {
+    if (!redoStack.length) return;
+
+    undoStack.push({
+        tables: JSON.parse(JSON.stringify(tables)),
+        waitingList: JSON.parse(JSON.stringify(waitingList))
+    });
+
+    const next = redoStack.pop();
+    tables = next.tables;
+    waitingList = next.waitingList;
+
+    saveState();
+    renderDashboard();
+    renderWaitingList();
+}
+
 
 
 // --- Render ---
@@ -280,12 +329,14 @@ function renderSingleList(type, elementId, icon) {
 
 // --- Actions ---
 function tableCustomer(id, name) {
+    pushUndoState();
     const table = tables.find(t=>t.id===id);
     table.customer = name;
     saveState();
 }
 
 function setManualStart(id) {
+    pushUndoState();
     const table = tables.find(t => t.id === id);
     const input = document.getElementById(`manualStart${id}`).value;
     if(!input) return alert('Enter a valid time (HH:MM)');
@@ -304,6 +355,7 @@ function setManualStart(id) {
 }
 
 function startStop(id) {
+    pushUndoState();
     const table = tables.find(t=>t.id===id);
     if(table.running) {
         // stop
@@ -331,6 +383,7 @@ function startStop(id) {
 
 
 function addWaiting(type) {
+    pushUndoState();
     const name = document.getElementById(
         type === 'billiard' ? 'waitNameBilliard' : 'waitNameDart'
     ).value.trim();
@@ -362,6 +415,7 @@ function addWaiting(type) {
 
 
 function moveWaiting(type, index, dir) {
+    pushUndoState();
     const newIndex = index + dir;
     if (newIndex < 0 || newIndex >= waitingList[type].length) return;
 
@@ -373,12 +427,14 @@ function moveWaiting(type, index, dir) {
 }
 
 function removeWaiting(type, index) {
+    pushUndoState();
     waitingList[type].splice(index, 1);
     saveState();
     renderWaitingList();
 }
 
 function assignToFreeTable(type, index) {
+    pushUndoState();
     const w = waitingList[type][index];
 
     // Find first free table or Dart
@@ -422,6 +478,23 @@ setInterval(()=>{
 // --- Init ---
 renderDashboard();
 renderWaitingList();
+
+// event listener
+document.addEventListener('keydown', function(e) {
+    // CTRL+Z / CMD+Z → Undo
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+    }
+
+    // CTRL+Y or CTRL+SHIFT+Z → Redo
+    if ((e.ctrlKey || e.metaKey) && 
+        (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault();
+        redo();
+    }
+});
+
 </script>
 </body>
 </html>
