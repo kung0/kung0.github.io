@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Billiard & Dart Tracker</title>
-
 <style>
     body { font-family: Arial, sans-serif; margin:0; padding:0; background:#f0f0f0; }
     header { background:#333; color:#fff; padding:1rem; text-align:center; }
@@ -67,222 +66,539 @@
 
 </style>
 </head>
-
 <body>
 
 <header>
-<h1>🎱 Billiard & Dart Tracker</h1>
-<div>
-<button onclick="undo()">⏪ Undo</button>
-<button onclick="redo()">⏩ Redo</button>
-</div>
+    <h1>Billiard & Dart Tracker</h1>
 </header>
 
 <div class="layout">
-<main id="dashboard"></main>
+    <main id="dashboard"></main>
 
-<div class="waiting-list">
-<h3>🎱 Billiard Waiting</h3>
-<input id="waitNameBilliard" placeholder="Name">
-<input id="waitPagerBilliard" placeholder="Pager">
-<button onclick="addWaiting('billiard')">Add</button>
-<div id="waitingListBilliard"></div>
+    <div class="waiting-list">
 
-<hr>
+      <h2>🎱 Billiard Waiting List</h2>
+      <input type="text" id="waitNameBilliard" placeholder="Customer Name">
+      <input type="text" id="waitPagerBilliard" placeholder="Pager Number">
+      <button onclick="addWaiting('billiard')">Add to Billiard List</button>
+      <div id="waitingListBilliard"></div>
 
-<h3>🎯 Dart Waiting</h3>
-<input id="waitNameDart" placeholder="Name">
-<input id="waitPagerDart" placeholder="Pager">
-<button onclick="addWaiting('dart')">Add</button>
-<div id="waitingListDart"></div>
+      <hr style="margin: 15px 0;">
+
+      <h2>🎯 Dart Waiting List</h2>
+      <input type="text" id="waitNameDart" placeholder="Customer Name">
+      <input type="text" id="waitPagerDart" placeholder="Pager Number">
+      <button onclick="addWaiting('dart')">Add to Dart List</button>
+      <div id="waitingListDart"></div>
+
+    </div>
+
 </div>
+
+
 </div>
 
-<script>
-/* =======================
-   CONFIG
-======================= */
-const tablesConfig = [
- {id:1,type:'billiard'},{id:2,type:'billiard'},{id:3,type:'billiard'},
- {id:4,type:'billiard'},{id:5,type:'billiard'},{id:6,type:'dart'}
-];
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { 
+    getFirestore, 
+    doc, 
+    setDoc, 
+    getDoc, 
+    onSnapshot 
+  } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-const pricing = { billiard:12, dart:8 };
-const API_URL = "./state.json";
+ const firebaseConfig = {
+  apiKey: "AIzaSyDanjhYIHcL-aouqGr5NgFeY4bZOoVRB-I",
+  authDomain: "billard-tracker-b2e09.firebaseapp.com",
+  projectId: "billard-tracker-b2e09",
+  storageBucket: "billard-tracker-b2e09.firebasestorage.app",
+  messagingSenderId: "699601100624",
+  appId: "1:699601100624:web:b0429f5ab1de5673245655"
+};
 
-/* =======================
-   STATE
-======================= */
-let tables = [];
-let waitingList = {billiard:[], dart:[]};
+  const app = initializeApp(firebaseConfig);
+  const db = getFirestore(app);
 
-/* =======================
-   SERVER STORAGE
-======================= */
-async function saveState(){
- await fetch("save.php",{
-  method:"POST",
-  headers:{'Content-Type':'application/json'},
-  body:JSON.stringify({tables,waitingList})
- });
+  const stateRef = doc(db, "tracker", "liveState");
+
+  // ---------------------------
+  // REPLACE LOCAL STORAGE HERE
+  // ---------------------------
+
+  async function saveState() {
+    await setDoc(stateRef, {
+      tables,
+      waitingList
+    });
+  }
+
+ async function loadState() {
+  const snap = await getDoc(stateRef);
+
+  if (snap.exists()) {
+    const data = snap.data();
+
+    tables = data.tables.map(t => ({
+      ...t,
+      startTime: t.startTime ? t.startTime.toDate() : null,
+      history: t.history.map(h => ({
+        ...h,
+        start: h.start ? h.start.toDate() : null,
+        end: h.end ? h.end.toDate() : null
+      }))
+    }));
+
+    waitingList = {
+      billiard: data.waitingList.billiard.map(w => ({
+        ...w,
+        arrival: w.arrival ? w.arrival.toDate() : null
+      })),
+      dart: data.waitingList.dart.map(w => ({
+        ...w,
+        arrival: w.arrival ? w.arrival.toDate() : null
+      }))
+    };
+  }
 }
 
-async function loadState(){
- try{
-  const r = await fetch(API_URL);
-  const d = await r.json();
-  tables = d.tables.length ? d.tables : tablesConfig.map(t=>({...t,customer:'',timer:0,running:false,startTime:null,history:[]}));
-  waitingList = d.waitingList || {billiard:[], dart:[]};
- }catch{
-  tables = tablesConfig.map(t=>({...t,customer:'',timer:0,running:false,startTime:null,history:[]}));
-  waitingList = {billiard:[], dart:[]};
- }
-}
 
-/* =======================
-   UNDO / REDO
-======================= */
-let undoStack=[], redoStack=[];
+  // REALTIME SYNC
+onSnapshot(stateRef, (docSnap) => {
+  if (docSnap.exists()) {
+    const data = docSnap.data();
 
-function snapshot(){
- undoStack.push(JSON.stringify({tables,waitingList}));
- if(undoStack.length>100) undoStack.shift();
- redoStack=[];
-}
+    tables = data.tables.map(t => ({
+      ...t,
+      startTime: t.startTime ? t.startTime.toDate() : null,
+      history: t.history.map(h => ({
+        ...h,
+        start: h.start ? h.start.toDate() : null,
+        end: h.end ? h.end.toDate() : null
+      }))
+    }));
 
-function undo(){
- if(!undoStack.length) return;
- redoStack.push(JSON.stringify({tables,waitingList}));
- const prev = JSON.parse(undoStack.pop());
- tables = prev.tables; waitingList = prev.waitingList;
- renderDashboard(); renderWaitingList(); saveState();
-}
+    waitingList = {
+      billiard: data.waitingList.billiard.map(w => ({
+        ...w,
+        arrival: w.arrival ? w.arrival.toDate() : null
+      })),
+      dart: data.waitingList.dart.map(w => ({
+        ...w,
+        arrival: w.arrival ? w.arrival.toDate() : null
+      }))
+    };
 
-function redo(){
- if(!redoStack.length) return;
- undoStack.push(JSON.stringify({tables,waitingList}));
- const next = JSON.parse(redoStack.pop());
- tables = next.tables; waitingList = next.waitingList;
- renderDashboard(); renderWaitingList(); saveState();
-}
-
-window.addEventListener("keydown",e=>{
- if(e.ctrlKey && e.key==="z"){e.preventDefault();undo();}
- if(e.ctrlKey && (e.key==="y" || (e.shiftKey && e.key==="Z"))){e.preventDefault();redo();}
+    renderDashboard();
+    renderWaitingList();
+  }
 });
 
-/* =======================
-   HELPERS
-======================= */
-function formatTime(d){ return new Date(d).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}); }
 
-function calculatePrice(t){
- if(!t.startTime) return 0;
- let dur = (new Date()-new Date(t.startTime))/3600000;
- return (dur*(t.type==='dart'?pricing.dart:pricing.billiard)).toFixed(2);
+  // INITIAL LOAD
+  await loadState();
+  renderDashboard();
+  renderWaitingList();
+
+  // expose saveState globally so your existing code works
+  window.saveState = saveState;
+</script>
+
+
+
+<script>
+
+// --- Config ---
+const tablesConfig = [
+    { id: 1, type: 'billiard' },
+    { id: 2, type: 'billiard' },
+    { id: 3, type: 'billiard' },
+    { id: 4, type: 'billiard' },
+    { id: 5, type: 'billiard' },
+    { id: 6, type: 'dart' }
+];
+
+const pricing = {
+    billiard: { weekday: 12, weekend: 16, discountBefore17: 4 },
+    dart: 8
+};
+
+// --- Load State ---
+let tables = tablesConfig.map(t => ({
+    ...t,
+    customer: '',
+    timer: 0,
+    running: false,
+    startTime: null,
+    history: []
+}));
+let waitingList = {
+    billiard: [],
+    dart: []
+};
+
+// --- Helpers ---
+
+function formatTime(date) {
+    return new Date(date).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
 }
 
-/* =======================
-   RENDER
-======================= */
-function renderDashboard(){
- const dash=document.getElementById("dashboard");
- dash.innerHTML="";
- tables.forEach(t=>{
-  const d=document.createElement("div");
-  d.className="table-card";
-  d.innerHTML=`
-  <b>${t.type==='dart'?'🎯 Dart':'🎱 Billiard'} #${t.id}</b>
-  <div class="status ${t.running?'occupied':'free'}">${t.running?'Occupied':'Free'}</div>
-  <input value="${t.customer}" placeholder="Customer" onchange="setCustomer(${t.id},this.value)">
-  <div>Start: ${t.startTime?formatTime(t.startTime):'-'}</div>
-  <div>Price: €${calculatePrice(t)}</div>
-  <button onclick="startStop(${t.id})">${t.running?'Stop':'Start'}</button>
-  <div class="history">${t.history.map(h=>`<div>${h.customer} €${h.price}</div>`).join('')}</div>
-  `;
-  dash.appendChild(d);
- });
+function getBilliardRate(date) {
+    // date = JS Date object
+    let day = date.getDay(); // 0=Sunday, 1=Monday ... 6=Saturday
+
+    // Shift day: early hours belong to previous day
+    const hour = date.getHours();
+    if(hour < 6){ // midnight to 05:59 counts as previous day
+        day = (day + 6) % 7; // subtract 1 modulo 7
+    }
+
+    // Determine base rate
+    // Sunday–Thursday = 12€, Friday–Saturday = 16€
+    if(day === 5 || day === 6) return 16; // Friday or Saturday
+    return 12; // Sunday–Thursday
 }
 
-function renderWaitingList(){
- renderList('billiard','waitingListBilliard','🎱');
- renderList('dart','waitingListDart','🎯');
+
+function calculatePrice(table) {
+    if (!table.startTime) return 0;
+    const now = new Date();
+    let durationMs = table.running ? now - new Date(table.startTime) : table.timer;
+    durationMs -= 5*60*1000; // 5-min grace
+    if (durationMs < 0) durationMs = 0;
+    let minutes = Math.ceil(durationMs/1000/60/15)*15; // 15-min increments
+    let hours = minutes / 60;
+    if (table.type === 'dart') return hours * pricing.dart;
+    const day = new Date(table.startTime).getDay();
+    // let rate = (day===5||day===6) ? pricing.billiard.weekend : pricing.billiard.weekday;
+    let rate = getBilliardRate(now);
+    const hourOfDay = new Date(table.startTime).getHours();
+    // if(hourOfDay<17) rate -= pricing.billiard.discountBefore17;
+    let discount = 0
+    startTime = new Date(table.startTime)
+    if (startTime.getHours()<17 && startTime.getHours()>6) { // discount for before 17:00
+      const seventeen = new Date(table.startTime);
+      seventeen.setHours(17, 0, 0, 0);
+      let minutesBeforeDiscountEnd = 0;
+      let diffMs = 0
+      if (now.getHours()>=17) {
+        diffMs = seventeen - startTime; // difference in milliseconds
+      }
+      else {
+        diffMs = now - startTime; // difference in milliseconds
+      }
+      minutesBeforeDiscountEnd = Math.ceil(diffMs / 60000); // convert to minutes
+      const blocks15 = Math.round(minutesBeforeDiscountEnd / 15);
+      discount = blocks15
+    }
+    return (hours*rate).toFixed(2)-discount;
 }
 
-function renderList(type,id,icon){
- const c=document.getElementById(id); c.innerHTML="";
- waitingList[type].forEach((w,i)=>{
-  const d=document.createElement("div");
-  d.className="waiting-item";
-  d.innerHTML=`
-  <span>${icon} ${w.name} (${w.pager})</span>
-  <span>
-   <button onclick="assignToFreeTable('${type}',${i})">✅</button>
-   <button onclick="removeWaiting('${type}',${i})">❌</button>
-  </span>`;
-  c.appendChild(d);
- });
+function clearHistory(id) {
+    pushUndoState();
+    if(!confirm('Are you sure you want to clear the history for this table?')) return;
+    const table = tables.find(t => t.id === id);
+    table.history = [];
+    saveState();
+    renderDashboard();
 }
 
-/* =======================
-   ACTIONS
-======================= */
-function setCustomer(id,name){
- snapshot();
- tables.find(t=>t.id===id).customer=name;
- saveState();
+// --- Undo / Redo System ---
+let undoStack = [];
+let redoStack = [];
+
+function pushUndoState() {
+    undoStack.push({
+        tables: JSON.parse(JSON.stringify(tables)),
+        waitingList: JSON.parse(JSON.stringify(waitingList))
+    });
+    redoStack = []; // clear redo on new action
+    if (undoStack.length > 50) undoStack.shift();
 }
 
-function startStop(id){
- snapshot();
- const t=tables.find(x=>x.id===id);
- if(t.running){
-  t.running=false;
-  t.timer=new Date()-new Date(t.startTime);
-  t.history.unshift({customer:t.customer,price:calculatePrice(t)});
-  t.customer=''; t.startTime=null;
- }else{
-  t.running=true;
-  t.startTime=new Date();
- }
- saveState(); renderDashboard(); renderWaitingList();
+function undo() {
+    if (!undoStack.length) return;
+
+    redoStack.push({
+        tables: JSON.parse(JSON.stringify(tables)),
+        waitingList: JSON.parse(JSON.stringify(waitingList))
+    });
+
+    const prev = undoStack.pop();
+    tables = prev.tables;
+    waitingList = prev.waitingList;
+
+    saveState();
+    renderDashboard();
+    renderWaitingList();
 }
 
-function addWaiting(type){
- snapshot();
- const name=document.getElementById(type==='billiard'?'waitNameBilliard':'waitNameDart').value;
- const pager=document.getElementById(type==='billiard'?'waitPagerBilliard':'waitPagerDart').value;
- if(!name) return;
- waitingList[type].push({name,pager,arrival:new Date()});
- saveState(); renderWaitingList();
+function redo() {
+    if (!redoStack.length) return;
+
+    undoStack.push({
+        tables: JSON.parse(JSON.stringify(tables)),
+        waitingList: JSON.parse(JSON.stringify(waitingList))
+    });
+
+    const next = redoStack.pop();
+    tables = next.tables;
+    waitingList = next.waitingList;
+
+    saveState();
+    renderDashboard();
+    renderWaitingList();
 }
 
-function removeWaiting(type,i){
- snapshot();
- waitingList[type].splice(i,1);
- saveState(); renderWaitingList();
+
+
+// --- Render ---
+function renderDashboard() {
+    const dashboard = document.getElementById('dashboard');
+    dashboard.innerHTML = '';
+    tables.forEach(table => {
+        const div = document.createElement('div');
+        div.className = 'table-card';
+        div.innerHTML = `
+            <div class="table-header">
+                <strong>${table.type==='dart'?'🎯 Dart Board':'🎱 Billard'}</strong>
+                <span class="status ${table.running?'occupied':'free'}">${table.running?'Occupied':'Free'}</span>
+            </div>
+            <input style="font-weight:bold" placeholder="Customer Name" value="${table.customer}" onchange="tableCustomer(${table.id}, this.value)">
+            <input type="time" id="manualStart${table.id}" placeholder="HH:MM">
+            <button onclick="setManualStart(${table.id})">Set Start Time</button>
+            <div>Current Duration: <span id="duration${table.id}">0h 0m 0s</span></div>
+            <div>Start: <span id="start${table.id}">${table.startTime?formatTime(table.startTime):'-'}</span></div>
+            <div>Price: €<span id="price${table.id}">${calculatePrice(table)}</span></div>
+            <button onclick="startStop(${table.id})">${table.running?'Stop':'Start'}</button>
+            <button onclick="clearHistory(${table.id})">Clear History</button>
+            <div class="history">
+                <strong>History:</strong>
+                ${table.history.map(h=>`<div><strong>${h.customer}</strong>| ${formatTime(h.start)} - ${formatTime(h.end)} | ${Math.round(h.duration/60000)}m | €${h.price}</div>`).join('')}
+            </div>
+        `;
+        // if(table.type === 'dart') div.style.background = '#e0e0e0';  // light grey
+        dashboard.appendChild(div);
+    }); 
 }
 
-function assignToFreeTable(type,i){
- snapshot();
- const w=waitingList[type][i];
- const free=tables.find(t=>t.type===type && !t.running);
- if(!free) return alert("No free table");
- free.customer=w.name;
- free.running=true;
- free.startTime=new Date();
- waitingList[type].splice(i,1);
- saveState(); renderDashboard(); renderWaitingList();
+
+function renderWaitingList() {
+    renderSingleList('billiard', 'waitingListBilliard', '🎱');
+    renderSingleList('dart', 'waitingListDart', '🎯');
 }
 
-/* =======================
-   INIT
-======================= */
-(async()=>{
- await loadState();
- renderDashboard();
- renderWaitingList();
-})();
+
+
+function renderSingleList(type, elementId, icon) {
+    const container = document.getElementById(elementId);
+    container.innerHTML = '';
+
+    // Count how many free tables of this type exist
+    let freeCount = 0;
+    if (type === 'billiard') {
+        freeCount = tables.filter(t => t.type === 'billiard' && !t.running).length;
+    } else if (type === 'dart') {
+        const dart = tables.find(t => t.type === 'dart');
+        freeCount = dart && !dart.running ? 1 : 0;
+    }
+
+    waitingList[type].forEach((w, i) => {
+        const div = document.createElement('div');
+        div.className = 'waiting-item';
+
+        // Highlight first 'freeCount' people
+        if (i < freeCount) {
+            div.classList.add('next-up');
+        }
+
+        div.innerHTML = `
+            <span>
+                <strong>${i + 1}.</strong>
+                <strong>${icon} ${w.name} </strong> (Pager: ${w.pager}) — ${formatTime(w.arrival)}
+            </span>
+            <span class="waiting-controls">
+                <button onclick="moveWaiting('${type}', ${i}, -1)">↑</button>
+                <button onclick="moveWaiting('${type}', ${i}, 1)">↓</button>
+                <button onclick="assignToFreeTable('${type}', ${i})">✅</button> <!-- assign to free table -->
+                <button onclick="removeWaiting('${type}', ${i})">❌</button> <!-- remove from list -->
+            </span>
+        `;
+        container.appendChild(div);
+    });
+}
+
+
+
+
+// --- Actions ---
+function tableCustomer(id, name) {
+    pushUndoState();
+    const table = tables.find(t=>t.id===id);
+    table.customer = name;
+    saveState();
+}
+
+function setManualStart(id) {
+    pushUndoState();
+    const table = tables.find(t => t.id === id);
+    const input = document.getElementById(`manualStart${id}`).value;
+    if(!input) return alert('Enter a valid time (HH:MM)');
+
+    const [hours, minutes] = input.split(':').map(Number);
+    if(isNaN(hours) || isNaN(minutes)) return alert('Invalid time format');
+
+    // Set startTime to today at entered time
+    const now = new Date();
+    table.startTime = new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes, 0);
+    table.running = true;
+    table.timer = 0;
+    saveState();
+    renderDashboard();
+    renderWaitingList(); 
+}
+
+function startStop(id) {
+    pushUndoState();
+    const table = tables.find(t=>t.id===id);
+    if(table.running) {
+        // stop
+        table.running=false;
+        table.timer = new Date() - new Date(table.startTime);
+        table.history.unshift({
+            customer: table.customer,
+            start: table.startTime,
+            end: new Date(),
+            duration: table.timer,
+            price: calculatePrice(table)
+        });
+        table.startTime = null;
+        table.customer='';
+    } else {
+        // start
+        table.running=true;
+        table.startTime = new Date();
+        table.timer=0;
+    }
+    saveState();
+    renderDashboard();
+    renderWaitingList(); 
+}
+
+
+function addWaiting(type) {
+    pushUndoState();
+    const name = document.getElementById(
+        type === 'billiard' ? 'waitNameBilliard' : 'waitNameDart'
+    ).value.trim();
+    const pager = document.getElementById(
+        type === 'billiard' ? 'waitPagerBilliard' : 'waitPagerDart'
+    ).value.trim();
+    if (!name) {
+        alert("Enter a name");
+        return;
+    }
+    waitingList[type].push({
+        name,
+        pager,
+        arrival: new Date()
+    });
+
+    // clear inputs
+    document.getElementById(
+        type === 'billiard' ? 'waitNameBilliard' : 'waitNameDart'
+    ).value = '';
+
+    document.getElementById(
+        type === 'billiard' ? 'waitPagerBilliard' : 'waitPagerDart'
+    ).value = '';
+
+    saveState();
+    renderWaitingList();
+}
+
+
+function moveWaiting(type, index, dir) {
+    pushUndoState();
+    const newIndex = index + dir;
+    if (newIndex < 0 || newIndex >= waitingList[type].length) return;
+
+    [waitingList[type][index], waitingList[type][newIndex]] =
+        [waitingList[type][newIndex], waitingList[type][index]];
+
+    saveState();
+    renderWaitingList();
+}
+
+function removeWaiting(type, index) {
+    pushUndoState();
+    waitingList[type].splice(index, 1);
+    saveState();
+    renderWaitingList();
+}
+
+function assignToFreeTable(type, index) {
+    pushUndoState();
+    const w = waitingList[type][index];
+
+    // Find first free table or Dart
+    const freeTable = tables.find(t => t.type===type && !t.running && !t.customer);
+
+    if(!freeTable){
+        alert(`No free ${type==='billiard'?'billiard table':'dart board'} available!`);
+        return;
+    }
+
+    // Assign customer
+    freeTable.customer = w.name;
+    freeTable.running = false;  // timer not started automatically
+    freeTable.startTime = null;
+    freeTable.startTime = new Date();
+    freeTable.running = true;
+
+    // Remove from waiting list
+    waitingList[type].splice(index,1);
+
+    saveState();
+    renderDashboard();
+    renderWaitingList();
+}
+
+
+
+
+// --- Timer Updates ---
+setInterval(()=>{
+    tables.forEach(table=>{
+        if(table.running){
+            const durationMs = new Date() - new Date(table.startTime);
+            document.getElementById(`duration${table.id}`).innerText = `${Math.floor(durationMs/1000/60/60)}h ${Math.floor(durationMs/1000/60%60)}m ${Math.floor((durationMs/1000)%60)}s`;
+            document.getElementById(`price${table.id}`).innerText = calculatePrice(table);
+            document.getElementById(`start${table.id}`).innerText = formatTime(table.startTime);
+        }
+    });
+},1000);
+
+// --- Init ---
+renderDashboard();
+renderWaitingList();
+
+// event listener
+document.addEventListener('keydown', function(e) {
+    // CTRL+Z / CMD+Z → Undo
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+    }
+
+    // CTRL+Y or CTRL+SHIFT+Z → Redo
+    if ((e.ctrlKey || e.metaKey) && 
+        (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
+        e.preventDefault();
+        redo();
+    }
+});
+
 </script>
 </body>
 </html>
