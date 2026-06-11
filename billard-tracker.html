@@ -70,6 +70,7 @@
 
 <header>
     <h1>Billiard & Dart Tracker</h1>
+    <small style="opacity:0.6">Undo: Str+Z &nbsp;|&nbsp; Redo: Str+Y or Str+⇧+Z</small>
 </header>
 
 <div class="layout">
@@ -80,6 +81,8 @@
       <h2>🎱 Billiard Waiting List</h2>
       <input type="text" id="waitNameBilliard" placeholder="Customer Name">
       <input type="text" id="waitPagerBilliard" placeholder="Pager Number">
+      <textarea id="waitNotesBilliard" placeholder="Notes" style="width:100%;box-sizing:border-box;padding:0.3rem;margin:0.2rem 0"></textarea>
+      <label><input type="checkbox" style="width:auto" id="waitOrderBilliard"> Has drink/food order</label>
       <button onclick="addWaiting('billiard')">Add to Billiard List</button>
       <div id="waitingListBilliard"></div>
 
@@ -88,6 +91,8 @@
       <h2>🎯 Dart Waiting List</h2>
       <input type="text" id="waitNameDart" placeholder="Customer Name">
       <input type="text" id="waitPagerDart" placeholder="Pager Number">
+      <textarea id="waitNotesDart" placeholder="Notes" style="width:100%;box-sizing:border-box;padding:0.3rem;margin:0.2rem 0"></textarea>
+      <label><input type="checkbox" style="width:auto" id="waitOrderDart"> Has drink/food order</label>
       <button onclick="addWaiting('dart')">Add to Dart List</button>
       <div id="waitingListDart"></div>
 
@@ -266,6 +271,8 @@ function renderDashboard() {
             <div>Current Duration: <span id="duration${table.id}">0h 0m 0s</span></div>
             <div>Start: <span id="start${table.id}">${table.startTime?formatTime(table.startTime):'-'}</span></div>
             <div>Price: €<span id="price${table.id}">${calculatePrice(table)}</span></div>
+            <label><input type="checkbox" style="width:auto" ${table.hasOrder?'checked':''} onchange="toggleTableOrder(${table.id})"> Has drink/food order</label>
+            <textarea placeholder="Notes" style="width:100%;box-sizing:border-box;padding:0.3rem;margin:0.2rem 0" onchange="updateTableNotes(${table.id}, this.value)">${table.notes||''}</textarea>
             <button onclick="startStop(${table.id})">${table.running?'Stop':'Start'}</button>
             <button onclick="clearHistory(${table.id})">Clear History</button>
             <div class="history">
@@ -311,7 +318,9 @@ function renderSingleList(type, elementId, icon) {
         div.innerHTML = `
             <span>
                 <strong>${i + 1}.</strong>
-                <strong>${icon} ${w.name} </strong> (Pager: ${w.pager}) — ${formatTime(w.arrival)}
+                <strong>${icon} ${w.name} </strong> (Pager: ${w.pager}) — ${formatTime(w.arrival)}<br>
+                <label><input type="checkbox" style="width:auto" ${w.hasOrder?'checked':''} onchange="toggleWaitingOrder('${type}', ${i})"> Has drink/food order</label><br>
+                <textarea placeholder="Notes" style="width:100%;box-sizing:border-box;padding:0.3rem;margin:0.2rem 0" onchange="updateWaitingNotes('${type}', ${i}, this.value)">${w.notes||''}</textarea>
             </span>
             <span class="waiting-controls">
                 <button onclick="moveWaiting('${type}', ${i}, -1)">↑</button>
@@ -370,6 +379,8 @@ function startStop(id) {
         });
         table.startTime = null;
         table.customer='';
+        table.hasOrder = false;
+        table.notes = '';
     } else {
         // start
         table.running=true;
@@ -390,6 +401,13 @@ function addWaiting(type) {
     const pager = document.getElementById(
         type === 'billiard' ? 'waitPagerBilliard' : 'waitPagerDart'
     ).value.trim();
+    const notes = document.getElementById(
+        type === 'billiard' ? 'waitNotesBilliard' : 'waitNotesDart'
+    ).value.trim();
+    const orderEl = document.getElementById(
+        type === 'billiard' ? 'waitOrderBilliard' : 'waitOrderDart'
+    );
+    const hasOrder = orderEl.checked;
     if (!name) {
         alert("Enter a name");
         return;
@@ -397,6 +415,8 @@ function addWaiting(type) {
     waitingList[type].push({
         name,
         pager,
+        notes,
+        hasOrder,
         arrival: new Date()
     });
 
@@ -408,6 +428,12 @@ function addWaiting(type) {
     document.getElementById(
         type === 'billiard' ? 'waitPagerBilliard' : 'waitPagerDart'
     ).value = '';
+
+    document.getElementById(
+        type === 'billiard' ? 'waitNotesBilliard' : 'waitNotesDart'
+    ).value = '';
+
+    orderEl.checked = false;
 
     saveState();
     renderWaitingList();
@@ -447,6 +473,8 @@ function assignToFreeTable(type, index) {
 
     // Assign customer
     freeTable.customer = w.name;
+    freeTable.hasOrder = w.hasOrder || false;
+    freeTable.notes = w.notes || '';
     freeTable.running = false;  // timer not started automatically
     freeTable.startTime = null;
     freeTable.startTime = new Date();
@@ -462,6 +490,32 @@ function assignToFreeTable(type, index) {
 
 
 
+
+function toggleTableOrder(id) {
+    pushUndoState();
+    const table = tables.find(t => t.id === id);
+    table.hasOrder = !table.hasOrder;
+    saveState();
+    renderDashboard();
+}
+
+function toggleWaitingOrder(type, index) {
+    pushUndoState();
+    waitingList[type][index].hasOrder = !waitingList[type][index].hasOrder;
+    saveState();
+    renderWaitingList();
+}
+
+function updateTableNotes(id, value) {
+    const table = tables.find(t => t.id === id);
+    table.notes = value;
+    saveState();
+}
+
+function updateWaitingNotes(type, index, value) {
+    waitingList[type][index].notes = value;
+    saveState();
+}
 
 // --- Timer Updates ---
 setInterval(()=>{
