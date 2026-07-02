@@ -16,7 +16,6 @@
             color: white;
             padding-top: 70px;
             min-height: 100vh;
-            text-align: center;
             font-family: 'Helvetica Neue', Arial, sans-serif;
         }
         .navbar {
@@ -52,67 +51,119 @@
             }
         }
         .container {
-            padding: 40px 20px;
+            padding: 50px 20px 70px;
+            max-width: 960px;
         }
-        h2 {
-            color: white;
+        .page-title {
+            text-align: center;
             font-weight: 700;
-            margin-bottom: 30px;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 2px;
+            margin-bottom: 10px;
         }
-        .event-table-container {
-            background-color: rgba(0, 0, 0, 0.85);
-            border-radius: 15px;
-            padding: 20px;
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.3);
-            max-width: 900px;
-            margin: 0 auto;
+        .page-subtitle {
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
+            margin-bottom: 50px;
+            font-size: 0.95rem;
         }
-        .table {
-            margin-bottom: 0;
-            color: white;
-            border-collapse: separate;
-            border-spacing: 0;
+        .events-section {
+            margin-bottom: 55px;
         }
-        .table th, .table td {
-            border: none;
-            padding: 15px;
-            vertical-align: middle;
+        .section-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 22px;
         }
-        .table th {
-            background-color: #1a1a1a;
+        .section-header h3 {
+            font-weight: 700;
             text-transform: uppercase;
+            letter-spacing: 1.5px;
+            margin: 0;
+            white-space: nowrap;
+            font-size: 1.3rem;
+        }
+        .section-header .rule {
+            flex: 1;
+            height: 1px;
+            background: linear-gradient(to right, #c9a24b, rgba(201, 162, 75, 0));
+            margin-left: 18px;
+        }
+        .event-card {
+            background-color: rgba(0, 0, 0, 0.82);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-left: 3px solid #c9a24b;
+            border-radius: 10px;
+            padding: 18px 22px;
+            margin-bottom: 14px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.25s ease, transform 0.25s ease;
+            text-align: left;
+        }
+        .event-card:hover {
+            background-color: rgba(255, 255, 255, 0.06);
+            transform: translateY(-1px);
+        }
+        .event-main {
+            flex: 1 1 260px;
+        }
+        .event-name {
+            font-weight: 700;
+            font-size: 1.1rem;
+            margin-bottom: 4px;
+        }
+        .event-description {
+            color: rgba(255, 255, 255, 0.65);
             font-size: 0.9rem;
-            letter-spacing: 1px;
+        }
+        .event-when {
+            flex: 0 0 auto;
+            text-align: right;
+        }
+        .event-day, .event-date {
+            display: inline-block;
+            background-color: rgba(201, 162, 75, 0.15);
+            color: #e6c877;
+            border: 1px solid rgba(201, 162, 75, 0.4);
+            border-radius: 20px;
+            padding: 4px 14px;
+            font-size: 0.8rem;
             font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
         }
-        .table tbody tr {
-            background-color: rgba(255, 255, 255, 0.05);
-            transition: background-color 0.3s ease;
-        }
-        .table tbody tr:hover {
-            background-color: rgba(255, 255, 255, 0.15);
-        }
-        .table tbody td {
-            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-        }
-        .table tbody tr:last-child td {
-            border-bottom: none;
-        }
-        @media (max-width: 768px) {
-            .table th, .table td {
-                padding: 10px;
-                font-size: 0.85rem;
-            }
-            .event-table-container {
-                padding: 15px;
-            }
-        }
-        .loading-message, .error-message {
-            color: white;
+        .event-time {
+            display: block;
+            color: rgba(255, 255, 255, 0.85);
+            font-size: 0.95rem;
             font-weight: 500;
-            padding: 20px;
+        }
+        .empty-message, .error-message {
+            color: rgba(255, 255, 255, 0.6);
+            font-style: italic;
+            padding: 10px 4px;
+        }
+        .error-message {
+            color: #e08282;
+        }
+        @media (max-width: 576px) {
+            .event-card {
+                flex-direction: column;
+                align-items: flex-start;
+                justify-content: flex-start;
+            }
+            .event-main {
+                flex-basis: auto;
+            }
+            .event-when {
+                text-align: left;
+            }
         }
     </style>
 </head>
@@ -137,23 +188,27 @@
 
     <!-- Events Content -->
     <div class="container">
-        <h2>Upcoming Events</h2>
-        <div class="event-table-container">
-            <table class="table">
-                <thead>
-                    <tr>
-                        <th>Event Name</th>
-                        <th>Date</th>
-                        <th>Time</th>
-                        <th>Description</th>
-                    </tr>
-                </thead>
-                <tbody id="events-table-body">
-                    <tr>
-                        <td colspan="4" class="loading-message">Loading events...</td>
-                    </tr>
-                </tbody>
-            </table>
+        <h2 class="page-title">Events</h2>
+        <p class="page-subtitle">Das geht ab im downtown!</p>
+
+        <div class="events-section">
+            <div class="section-header">
+                <h3>Weekly Events</h3>
+                <div class="rule"></div>
+            </div>
+            <div id="weekly-events-list">
+                <p class="empty-message">Loading events...</p>
+            </div>
+        </div>
+
+        <div class="events-section">
+            <div class="section-header">
+                <h3>Special Events</h3>
+                <div class="rule"></div>
+            </div>
+            <div id="special-events-list">
+                <p class="empty-message">Loading events...</p>
+            </div>
         </div>
     </div>
 
@@ -161,85 +216,150 @@
     <script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-    <!-- Script to fetch and display events from Google Sheets -->
+
+    <!--
+        HOW TO UPDATE THIS PAGE
+        ========================
+        Events are pulled live from the same Google Sheet as before - just edit the
+        spreadsheet and the site updates itself, no code changes needed.
+
+        The sheet needs these columns:
+          Event Name | Type | Date | Time | Description
+
+        - "Type" must be either "Weekly" or "Special" (case-insensitive).
+            - Weekly   -> shown in the "Weekly Events" section. Put the recurring
+                          day in the Date column, e.g. "Monday" or "Every Monday".
+            - Special  -> shown in the "Special Events" section. Put a specific
+                          date in the Date column as DD.MM.YYYY, e.g. "20.07.2025".
+                          Leave Date blank for "TBA".
+        - Rows with a blank Type are treated as "Special" for backwards compatibility.
+        - Past Special events (before today) are automatically hidden.
+    -->
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const eventsTableBody = document.getElementById('events-table-body');
-    
+            const weeklyList = document.getElementById('weekly-events-list');
+            const specialList = document.getElementById('special-events-list');
+
             const csvUrl = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vT4BEIZJrfUiQUWm2hiMHIqQl8IhbndKlCM4c5UnkOMh5qw1f2k7uUCgxwBwHa10dAcCEJMQZI_gWFJ/pub?gid=0&single=true&output=csv';
-    
+
+            const DAY_ORDER = {
+                monday: 0, montag: 0,
+                tuesday: 1, dienstag: 1,
+                wednesday: 2, mittwoch: 2,
+                thursday: 3, donnerstag: 3,
+                friday: 4, freitag: 4,
+                saturday: 5, samstag: 5,
+                sunday: 6, sonntag: 6
+            };
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str == null ? '' : str;
+                return div.innerHTML;
+            }
+
             // Parse "DD.MM.YYYY" into a JS Date object
             function parseEuropeanDate(dateStr) {
                 const [day, month, year] = dateStr.split('.');
                 return new Date(`${year}-${month}-${day}`); // Safe format for JS Date
             }
-    
+
+            function formatSpecialDate(dateStr) {
+                const date = parseEuropeanDate(dateStr);
+                if (isNaN(date)) return dateStr;
+                return date.toLocaleDateString('en-GB', { weekday: 'short', day: '2-digit', month: 'short' });
+            }
+
+            function dayRank(dateStr) {
+                const lower = (dateStr || '').toLowerCase();
+                for (const key in DAY_ORDER) {
+                    if (lower.includes(key)) return DAY_ORDER[key];
+                }
+                return 7;
+            }
+
+            function renderEmpty(container, message, isError) {
+                container.innerHTML = `<p class="${isError ? 'error-message' : 'empty-message'}">${message}</p>`;
+            }
+
+            function renderWeeklyCard(event) {
+                return `
+                    <div class="event-card">
+                        <div class="event-main">
+                            <div class="event-name">${escapeHtml(event['Event Name'])}</div>
+                            ${event['Description'] ? `<div class="event-description">${escapeHtml(event['Description'])}</div>` : ''}
+                        </div>
+                        <div class="event-when">
+                            <span class="event-day">${escapeHtml(event['Date'] || 'Weekly')}</span>
+                            ${event['Time'] ? `<span class="event-time">${escapeHtml(event['Time'])}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
+            function renderSpecialCard(event, dateLabel) {
+                return `
+                    <div class="event-card">
+                        <div class="event-main">
+                            <div class="event-name">${escapeHtml(event['Event Name'])}</div>
+                            ${event['Description'] ? `<div class="event-description">${escapeHtml(event['Description'])}</div>` : ''}
+                        </div>
+                        <div class="event-when">
+                            <span class="event-date">${escapeHtml(dateLabel)}</span>
+                            ${event['Time'] ? `<span class="event-time">${escapeHtml(event['Time'])}</span>` : ''}
+                        </div>
+                    </div>
+                `;
+            }
+
             Papa.parse(csvUrl, {
                 download: true,
                 header: true,
                 skipEmptyLines: true,
-                complete: function(results) {
+                complete: function (results) {
                     const data = results.data;
 
-                    console.log("Parsed data:", data);
-    
-                    eventsTableBody.innerHTML = '';
-    
+                    const weeklyEvents = data.filter(event => (event['Type'] || '').trim().toLowerCase() === 'weekly');
+                    const otherEvents = data.filter(event => (event['Type'] || '').trim().toLowerCase() !== 'weekly');
+
+                    // --- Weekly Events ---
+                    weeklyEvents.sort((a, b) => dayRank(a['Date']) - dayRank(b['Date']));
+
+                    if (weeklyEvents.length === 0) {
+                        renderEmpty(weeklyList, 'No weekly events right now.');
+                    } else {
+                        weeklyList.innerHTML = weeklyEvents.map(renderWeeklyCard).join('');
+                    }
+
+                    // --- Special Events ---
                     const today = new Date();
                     today.setHours(0, 0, 0, 0); // normalize time
-    
-                    const futureEvents = data
+
+                    const tbaEvents = otherEvents.filter(event => !event['Date']);
+
+                    const futureEvents = otherEvents
                         .filter(event => {
-                            const dateStr = event['Date'];
-                            const eventDate = parseEuropeanDate(dateStr);
-                            return eventDate >= today;
+                            if (!event['Date']) return false;
+                            const eventDate = parseEuropeanDate(event['Date']);
+                            return !isNaN(eventDate) && eventDate >= today;
                         })
-                        .sort((a, b) => {
-                            const dateA = parseEuropeanDate(a['Date']);
-                            const dateB = parseEuropeanDate(b['Date']);
-                            return dateA - dateB;
-                        });
+                        .sort((a, b) => parseEuropeanDate(a['Date']) - parseEuropeanDate(b['Date']));
 
-                    const tbaEvents = data
-                        .filter(event => event['Date']=='')
-
-                    console.log(tbaEvents)
-    
-                    if (futureEvents.length === 0) {
-                        eventsTableBody.innerHTML = '<tr><td colspan="4" class="error-message">No upcoming events.</td></tr>';
-                        return;
+                    if (futureEvents.length === 0 && tbaEvents.length === 0) {
+                        renderEmpty(specialList, 'No upcoming special events.');
+                    } else {
+                        specialList.innerHTML =
+                            futureEvents.map(event => renderSpecialCard(event, formatSpecialDate(event['Date']))).join('') +
+                            tbaEvents.map(event => renderSpecialCard(event, 'TBA')).join('');
                     }
-    
-                    tbaEvents.forEach(event => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${event['Event Name']}</td>
-                            <td>TBA</td>
-                            <td>${event['Time']}</td>
-                            <td>${event['Description']}</td>
-                        `; 
-                        eventsTableBody.appendChild(row);
-                    });
-
-                    futureEvents.forEach(event => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
-                            <td>${event['Event Name']}</td>
-                            <td>${event['Date']}</td>
-                            <td>${event['Time']}</td>
-                            <td>${event['Description']}</td>
-                        `; 
-                        eventsTableBody.appendChild(row);
-                    });
                 },
-                error: function(err) {
-                    eventsTableBody.innerHTML = '<tr><td colspan="4" class="error-message">Failed to load events.</td></tr>';
+                error: function (err) {
+                    renderEmpty(weeklyList, 'Failed to load events.', true);
+                    renderEmpty(specialList, 'Failed to load events.', true);
                     console.error("PapaParse Error:", err);
                 }
             });
         });
     </script>
-    
-     
 </body>
 </html>
