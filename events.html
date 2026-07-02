@@ -258,10 +258,11 @@
                 return div.innerHTML;
             }
 
-            // Parse "DD.MM.YYYY" into a JS Date object
+            // Parse "DD.MM.YYYY" (or "DD.MM." with year omitted) into a JS Date object
             function parseEuropeanDate(dateStr) {
                 const [day, month, year] = dateStr.split('.');
-                return new Date(`${year}-${month}-${day}`); // Safe format for JS Date
+                const fullYear = year || new Date().getFullYear();
+                return new Date(`${fullYear}-${month}-${day}`); // Safe format for JS Date
             }
 
             function formatSpecialDate(dateStr) {
